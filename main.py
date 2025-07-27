@@ -1,70 +1,68 @@
 import asyncio
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from pyrogram import Client
 from pyrogram.errors import RPCError, ChatWriteForbidden, InviteHashInvalid
 
 app = FastAPI()
 
-# ✅ Your Telegram API credentials
-api_id = 23347107
-api_hash = "8193110bf32a08f41ac6e9050b2a4df4"
-
-# ✅ All session strings with emojis
 sessions = [
     {
-        "session_string": "BQFkP6MAecJP8lDAPnxVAFV8G-tGxphqRwEWjvE8_8vyUHaLREqyaEkGeWBqOdtZ2GbomzqvlhgmcYjvlh1FVCEAV6hBnkx7YNg7tyPt2_5_X0TFWPCetUYo7K5MNKyL-5sDAxhsS02RS94u2BSbc8RcvNwP79CPXXTWde12fMQPXt8KHJZdzZ57s1S0cz-KR5LqO1TuyKnX3tT6ODzIfCDDbD7Op9RUBQXPWzKHD9SksCR3VuYAm7DS8pOAi7QeWeMi4O-TCPgnNjzJDNf4xyqdrXpeVPnKjNfM9AFf6rhZfKt-eoELxrk0z6_ScDWyPK5MFMjIfGprcwKyoVmVTuW7vVDc4SYMDAAAFYm1rbwA",
+        "session_string": "BQFkP6MAecJP8lDAPnxVAFV8G-tGxphqRwEWjvE8_8vyUHaLREqyaEk-N1A8koY-3JKPpnH2nfP2N6DQR8wHhNmrh-PRAtYeLKnzrYfI7h6XfM4keQhznIiowiIJNqGINBdIaiAY-ohj0ysS9OwWE1cZHvjE6uDkz8-ru6nflrbqogMOPlMG85nkZ4ghUl4yO8maWbtbIlIrB0qhWlyQS0UUXJ-_XGqzxofoIaeiK4VshaN7FJvPDwJmjqfAyODqiXqVjQsOKkljv1OQeGt98xeTlCkCf_VUJtzV_M30xyiLsYn9MFv-YsTi1E7cOLbZpHDKxBqFJ8J0pnExKxQC253OJyinKwAAAAHyyQW1AA",
         "emoji": "❤️"
     },
     {
-        "session_string": "BQFkP6MAvfFYzMo4v_dKtRzB9pTaaBwiIkdH8lBg-uv7FaVPIVI4xyBoRTdChUnBN2OtozSB2yx_hZMdWzMwe2jjhO0-7AcY4tdxZP4E-sfZBMXKyebx9TX_Vh5AcnxNijRsDulBoC0WaA8bbZgWDkafco0sB8LObxEDqB2DRA3TkfV2AAK4m3U6o8fDqH_SzrkpyZPQTDyBhXYedfl1rBDoqMJHtYJDrRu0EDPGj5eEBObQ4BeR6OE0GWaS25M-PvANbm6b3zQtWRZ4Iq3bI5Ez0UKaVbA9EiA1w4IysXjCmQgWIQyxvCQcU_JD5lYX2xu0xIEmkP47EnC6P82q5vbWjkS9o6AAgAA",
+        "session_string": "BQFkP6MAvfFYzMo4v_dKtRzB9pTaaBwiIkdH8lBg-uv7FaVPIVI4xy-MRYD90W8ZElBUfxJwwojkL4zogn10V_mraazL8nSoHHlmIKgmqd0eZPFMsixPE0b0F6K2tstMRTHWt5X2nL-3fmQGVBAMdye6Vje3X35JGs7UMzMjtMHQQXijbohDWXC068hZr5Tk3NMsJ1w3L7hyYBh__2p73LCc9tZpnn9CpvDfGap4Tf2dLS5K37aEmZt72qXT1Lix20IXVQ5pWc273IndDv-h0Pxj19t_wYeuRLJiGF5b-az23-4CT32bOCO9U3LSnQTH_F3PT8QK2k4SQK8lYlvm-z8wDr10bgAAAAG__jchAA",
         "emoji": "🥰"
     },
     {
-        "session_string": "BQFkP6MAHYepECQoFzFWkMDzp7iwqpK09AT6bJvuEXUAPhZ_iH4kYZ37PQZtCKu_2vskHUsAyIt7R9mkwTk3D-rdscvM39mmg0txfdW2S2-jOEAE0bEHFYmUJ3oYyhs4N3B7TFKqF1gUGZ4f7OguZ6r1m5JKnkG8i9nzTVRJDhdSAgHOq6tDj_1AsNf5wTGqKckkOCBexUu7-Yu0ph-PT9hr-v48B_WBltVGfgAF-x7YVsW7dzxLGgZuWsnC-2-0yKr7RtXB6p4LPdUhnX0z3Y2qnULV83TTf-RYHKcUYVbMgfWtbBbYjq8NoJZXZEnQHh2PWv1BWkpCZ6lRyxGVkdkLnh9UAAA",
-        "emoji": "💚"
+        "session_string": "BQFkP6MApjWuPUE60IqlngaK5h5iLSbikJ8zI6mMaxeA3IRJ2735IpoEXBdEHdczx1gi5H9R0xjeAJrb6GSbbolnPq8k1CSvyUA2FXSp8JMrOv0PFAUgKh8y_0UQIoMjVqfMl48suTrWOlmbYykXsXI7WL1Nh6YWgsxGlp4Bk85qPTvFfJ8GuvzIJCR0s2bLa9ALXThk4ek5QTPwK06TZeEBQkUEop75b1oVpJKU3uMoFOQxsMDkFYccuVgqqL6e1Fy_CDzE0m_eGDaByMUEKn278bbdiM_87hT-KJJjrPbclWabt-T0o8mDm0NcMhCV4jNzkdtjwQNxr04ipOjDkzKucT9SlgAAAAHEVuWUAA",
+        "emoji": "😘"
     },
     {
-        "session_string": "BQFkP6MAFlmegc8N5r_KLJoix3fKzw5j5IC8HLlk24xpICO52l5kB9hFpV0x3LtL84K1gqK4OHhlxVrJ1gmgwHnH8ieBBdIQKXKXoHeTxptfbA8kY_Yz4Wb-CeX7MRsUMalZIXH9MiKnXE_LSzY3K7fSOcXQH0rLZqSG-UZdfXvPOH3YiEn0d_KP5aFHDqUtI1dZrxOyeDFyXw5FzvfrhCPRhEbMeQZf_hvgu0ZrYLCQx0zrUdYpN4cwlzgR_npy9yo6dyxFvOpJTrnE2yt0TxLvj7x0fHVjgr1LU3V7BIsg4qB5K-EpAyXvViD4WVDjWwnmdvoRS2x3eBJPuucJZxObL4ZgAAA",
-        "emoji": "💙"
+        "session_string": "BQFkP6MATNv1_ZvSbYgncqNuF4pBZ43S9196GeNvxdstxOyQfxtKSsKZZD5oYQ5rbkgMAsfiqu5GQAk6TR4LLTOQaSvhDNtpPNMk6MeEG3wcLYHktiFO2ac0ejZLc7SzbYoOshsoKbz1NYFK3hDdsQf2sMXQr_c6GAkP0ksYbuATldMZf4hi1_OR8UkPpT5hXH4UXZFQXpdqaBHDzY6XuVkkv9pkd7sRZ3FfAruFU7pFvy_pqkRe_3R1rIEtpnfdxmzWB2wzhWRWdjjZCiA0EmlRidgXftcQs7p6jDiIGjSowDkvZWTLynxeLS1ustTPuSX8AuUZSb30NKXPsTfBpZ_uwLkfAAAAAAHQPiQNAA",
+        "emoji": "😍"
     },
     {
-        "session_string": "BQFkP6MAPVXyb_FqJrhTm8HwWx2e8iz3byjwdcsMrSYMECNEHjFq4gwUtzfcaYIiciws4fFrvOF4m1zBujJ8nDVNOPK3MLu_yIxQhUGL07KdMHYgHWGXpUXwDs3n9FK2bsF_e2iN7qBqS_bGqSXWVlB7QhS99QU15h5sCDATcSNAH2R7fuzWzTOECjPLrjWAzi-OZ5HhNgeXeZ89sSNx933jWKAGy9r9nmHREEiRguV28Z5XSRNV3U8jzpRI1gHiqMILQqSorvKHYQ9Vt4rStxKPvt8PWLmmNA4JiJGUAlTfNMCjv2woh9xUcq_-g60un5f5qiN_X6b94g4lWwhwTmvJwSYMDAAAAAH5V3EJAA",
-        "emoji": "🔥"
+        "session_string": "BQFkP6MADUdYCtGiaVdFCLEs3Oaev-80pB5fkv55ePT6RhvDJpQiLw4LKisieBN8dqoh1tB03xrNAkuO2617NDr3xJ_w1Uf90T85hJidAE_lcJ3SjF0JNMaeuXzqokN1-lXG2THbiGu81jWXIdHhbUutzEA9JWRrYgrjZnDN7Y5XQW9QgkfAtkF9aF-KHxoQWXwjW6NHwl9ulBolscCu7RUQ6S6uNI9a3vHUI7Zy-G_RPvjMKMevoawnv_RgMrGhMAmGpy6ccP2d3hHxw4GW5LZqPZcTnpay2BKEDC04gT2Ec4baT5s_CDlmfiqBPy_MrScYxEJjZgZdGu5q_YEb1kxvkHdIOgAAAAG9GPzuAA",
+        "emoji": "😯"
     }
 ]
 
-# ✅ Function to send message
-async def send_messages(app, chat, msg_id, comment, emoji):
-    joined = False
+api_id = 23347107
+api_hash = "8193110bf32a08f41ac6e9050b2a4df4"
+
+async def send_message_with_client(app, chat, msg_id, message, emoji):
     try:
         await app.join_chat(chat)
-        joined = True
     except InviteHashInvalid:
-        print(f"Invalid invite link.")
-        return
+        raise HTTPException(status_code=400, detail=f"Invalid invite link: {chat}")
     except RPCError as e:
-        print(f"Join error: {e}")
-        return
+        raise HTTPException(status_code=400, detail=f"Join error: {e}")
+
+    text = f"{message} {emoji}"
 
     try:
-        text_to_send = comment + " " + emoji
         if msg_id:
-            await app.send_message(chat_id=chat, text=text_to_send, reply_to_message_id=msg_id)
+            await app.send_message(chat_id=chat, text=text, reply_to_message_id=msg_id)
         else:
-            await app.send_message(chat_id=chat, text=text_to_send)
+            await app.send_message(chat_id=chat, text=text)
     except ChatWriteForbidden:
-        print("No permission.")
-    except Exception as e:
-        print(f"Send error: {e}")
+        raise HTTPException(status_code=403, detail=f"Cannot send message to {chat}: No permission.")
+    except RPCError as e:
+        raise HTTPException(status_code=400, detail=f"Send message error: {e}")
 
-    if joined:
-        try:
-            await app.leave_chat(chat)
-        except Exception as e:
-            print(f"Leave error: {e}")
+    try:
+        await app.leave_chat(chat)
+    except Exception:
+        pass  # Ignore errors on leaving
 
-# ✅ Process full task
-async def process(link: str, comment: str, amount: int):
+@app.get("/api")
+async def api_send_comment(
+    link: str = Query(..., description="Telegram group or post link"),
+    message: str = Query(..., description="Message to send"),
+    amount: int = Query(1, ge=1, le=5, description="How many times to send per session (max 5)")
+):
+    # Parse chat and message ID
     try:
         parts = link.rstrip("/").split("/")
         if parts[-1].isdigit():
@@ -73,30 +71,35 @@ async def process(link: str, comment: str, amount: int):
         else:
             chat = parts[-1]
             msg_id = None
-    except:
-        return {"error": "Invalid link format"}
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid link format")
 
     clients = []
-    for index, s in enumerate(sessions):
-        app = Client(
-            f"session_{index}",
-            api_id=api_id,
-            api_hash=api_hash,
-            session_string=s["session_string"]
-        )
-        clients.append(app)
+    try:
+        for index, s in enumerate(sessions):
+            app = Client(
+                f"session_{index}",
+                api_id=api_id,
+                api_hash=api_hash,
+                session_string=s["session_string"],
+                # no_console=True, # optionally disable pyrogram console logs
+            )
+            clients.append((app, s["emoji"]))
 
-    await asyncio.gather(*(client.start() for client in clients))
+        # Start clients concurrently
+        await asyncio.gather(*(app.start() for app, _ in clients))
 
-    for index, app in enumerate(clients):
-        for _ in range(amount):
-            await send_messages(app, chat, msg_id, comment, sessions[index]["emoji"])
-            await asyncio.sleep(1)
+        # Send messages concurrently per session & amount
+        tasks = []
+        for app, emoji in clients:
+            for _ in range(amount):
+                tasks.append(send_message_with_client(app, chat, msg_id, message, emoji))
+                await asyncio.sleep(0.7)  # To avoid flooding too fast
 
-    await asyncio.gather(*(client.stop() for client in clients))
-    return {"status": "✅ Done"}
+        await asyncio.gather(*tasks)
 
-# ✅ FastAPI endpoint
-@app.get("/api")
-async def handle_request(link: str = Query(...), message: str = Query(...), amount: int = Query(1)):
-    return await process(link, message, amount)
+    finally:
+        # Stop all clients
+        await asyncio.gather(*(app.stop() for app, _ in clients))
+
+    return {"success": True, "message": f"Sent {amount} messages from {len(sessions)} sessions to {chat}"}
